@@ -8,16 +8,15 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #fafaf8; color: #0b0b0b; padding: 1rem 1.5rem;
+  background: #fafaf8; color: #0b0b0b; padding: 1rem 1.25rem;
 }
 @media (prefers-color-scheme: dark) {
   body { background: #1a1a19; color: #f0efec; }
   .chart-card { background: #222221; border-color: rgba(255,255,255,0.1); }
-  .chart-title .sub { color: #898781; }
-  .section-label { color: #898781; }
   .chart-title { color: #c3c2b7; }
   .legend-text { color: #c3c2b7; }
   .scroll-hint { color: #898781; }
+  .section-label { color: #898781; }
 }
 .section-label {
   font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
@@ -25,16 +24,13 @@ body {
 }
 .chart-card {
   background: #fff; border: 0.5px solid rgba(11,11,11,0.1);
-  border-radius: 12px; padding: 1.25rem;
+  border-radius: 12px; padding: 1rem;
 }
-.chart-title {
-  font-size: 13px; font-weight: 500; color: #52514e; margin-bottom: 0.6rem;
-}
+.chart-title { font-size: 13px; font-weight: 500; color: #52514e; margin-bottom: 0.5rem; }
 .sub { color: #898781; font-weight: 400; }
-.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 1rem; }
-.legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; font-size: 12px; }
-.legend-text { color: #52514e; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; font-size: 12px; }
 .legend span { display: flex; align-items: center; gap: 5px; }
+.legend-text { color: #52514e; }
 .dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
 .scroll-wrap {
   overflow-x: auto; cursor: grab; user-select: none;
@@ -43,9 +39,15 @@ body {
   scrollbar-color: rgba(11,11,11,0.15) transparent;
   padding-bottom: 4px;
 }
+.scroll-wrap:active { cursor: grabbing; }
 .scroll-wrap::-webkit-scrollbar { height: 4px; }
 .scroll-wrap::-webkit-scrollbar-thumb { background: rgba(11,11,11,0.15); border-radius: 2px; }
-.scroll-hint { font-size: 11px; color: #898781; margin-top: 6px; text-align: right; }
+.scroll-hint { font-size: 11px; color: #898781; margin-top: 4px; text-align: right; }
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+@media (max-width: 600px) {
+  body { padding: 0.75rem; }
+  .chart-row { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
@@ -53,7 +55,7 @@ body {
 
 <p class="section-label">Daily Chart</p>
 
-<div class="chart-card">
+<div class="chart-card" id="topCard">
   <p class="chart-title">5km 기록 <span class="sub">(분)</span></p>
   <div class="legend">
     <span><span class="dot" style="background:#2a78d6;"></span><span class="legend-text">5km 런</span></span>
@@ -67,11 +69,11 @@ body {
   <p class="scroll-hint">← 스크롤하여 전체 기록 확인</p>
 </div>
 
-<div class="chart-row">
+<div class="chart-row" id="bottomRow">
   <div class="chart-card">
     <p class="chart-title">월별 평균 페이스 <span class="sub">(분/km)</span></p>
     <div style="position:relative;width:100%;height:150px;">
-      <canvas id="paceChart" role="img" aria-label="월별 평균 페이스">6월 6'33&quot;, 7월 6'07&quot;, 9월 6'42&quot;</canvas>
+      <canvas id="paceChart" role="img" aria-label="월별 평균 페이스">6월 6'33", 7월 6'07", 9월 6'42"</canvas>
     </div>
   </div>
   <div class="chart-card">
@@ -90,19 +92,16 @@ const grid = isDark ? '#2c2c2a' : '#e1e0d9';
 const tick = '#898781';
 const axis = isDark ? '#383835' : '#c3c2b7';
 
-// 0=5km이상(파랑), 1=5km미만(회색)
 const daily = [
   { d:'6/4',  v:29.1, t:0 },
   { d:'6/5',  v:38.3, t:0 },
-  { d:'6/7',  v:null, t:0 },  // 대회 10km 제외
   { d:'6/10', v:31.7, t:0 },
   { d:'6/11', v:28.5, t:0 },
-  { d:'6/13', v:null, t:0 },  // 10km 제외
   { d:'6/15', v:34.0, t:0 },
   { d:'6/18', v:30.5, t:0 },
   { d:'6/22', v:31.0, t:0 },
   { d:'6/24', v:31.1, t:0 },
-  { d:'6/26', v:17.7, t:1 },  // 2.52km
+  { d:'6/26', v:17.7, t:1 },
   { d:'7/1',  v:29.1, t:0 },
   { d:'7/3',  v:30.6, t:0 },
   { d:'7/19', v:31.4, t:0 },
@@ -112,204 +111,123 @@ const daily = [
   { d:'9/17', v:32.5, t:0 },
 ];
 
-// 10km·하프 제외, null 제거
-const filtered = daily.filter(d => d.v !== null);
+function initCharts() {
+  const bottomRow = document.getElementById('bottomRow');
+  const rowWidth = bottomRow.offsetWidth;
+  const BAR_W = 36;
+  const total = daily.length;
+  const canvasW = Math.max(total * BAR_W + 80, rowWidth);
 
-const VISIBLE = 15;
-const BAR_W = 36;
-const total = filtered.length;
-const canvasW = Math.max(total * BAR_W + 80, VISIBLE * BAR_W + 80);
+  const outer = document.getElementById('dailyOuter');
+  outer.style.width = canvasW + 'px';
 
-const outer = document.getElementById('dailyOuter');
-outer.style.width = canvasW + 'px';
+  const canvas = document.getElementById('dailyChart');
+  canvas.width = canvasW;
+  canvas.height = 180;
+  canvas.style.width = canvasW + 'px';
+  canvas.style.height = '180px';
 
-const canvas = document.getElementById('dailyChart');
-canvas.width = canvasW;
-canvas.height = 180;
-canvas.style.width = canvasW + 'px';
-canvas.style.height = '180px';
-
-const dailyChart = new Chart(canvas, {
-  type: 'bar',
-  data: {
-    labels: filtered.map(d => d.d),
-    datasets: [{
-      data: filtered.map(d => d.v),
-      backgroundColor: filtered.map(d => d.t === 0 ? '#2a78d6' : '#b4b2a9'),
-      borderRadius: { topLeft: 4, topRight: 4 },
-      borderSkipped: 'bottom',
-      maxBarThickness: 28,
-    }]
-  },
-  options: {
-    responsive: false,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: ctx => {
-            const v = ctx.raw;
-            const m = Math.floor(v), s = Math.round((v - m) * 60);
-            return m + '분 ' + (s < 10 ? '0' : '') + s + '초';
-          }
-        }
-      }
+  new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: daily.map(d => d.d),
+      datasets: [{
+        data: daily.map(d => d.v),
+        backgroundColor: daily.map(d => d.t === 0 ? '#2a78d6' : '#b4b2a9'),
+        borderRadius: { topLeft: 4, topRight: 4 },
+        borderSkipped: 'bottom',
+        maxBarThickness: 28,
+      }]
     },
-    scales: {
-      x: {
-        ticks: { color: tick, font: { size: 11 }, autoSkip: false, maxRotation: 45 },
-        grid: { display: false },
-        border: { color: axis }
-      },
-      y: {
-        min: 0,
-        ticks: { color: tick, font: { size: 11 }, callback: v => v + '분' },
-        grid: { color: grid },
-        border: { display: false }
-      }
-    },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: ctx => {
-            const v = ctx.raw;
-            const m = Math.floor(v), s = Math.round((v - m) * 60);
-            return m + '분 ' + (s < 10 ? '0' : '') + s + '초';
+    options: {
+      responsive: false,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.raw, m = Math.floor(v), s = Math.round((v-m)*60);
+              return m + '분 ' + (s<10?'0':'') + s + '초';
+            }
           }
-        }
-      },
-      annotation: {
-        annotations: {
-          goalLine: {
-            type: 'line', yMin: 30, yMax: 30,
-            borderColor: '#a32d2d', borderWidth: 1.5, borderDash: [4, 3],
-            label: {
-              display: true, content: '30분', position: 'end',
-              color: '#a32d2d', font: { size: 11, weight: '500' },
-              backgroundColor: 'transparent', padding: { bottom: 4 }
+        },
+        annotation: {
+          annotations: {
+            goalLine: {
+              type: 'line', yMin: 30, yMax: 30,
+              borderColor: '#a32d2d', borderWidth: 1.5, borderDash: [4,3],
+              label: {
+                display: true, content: '30분', position: 'end',
+                color: '#a32d2d', font: { size: 11, weight: '500' },
+                backgroundColor: 'transparent', padding: { bottom: 4 }
+              }
             }
           }
         }
-      }
-    }
-  }
-});
-
-// 드래그 스크롤
-const wrap = document.getElementById('dailyWrap');
-let isDown = false, startX, scrollLeft;
-wrap.addEventListener('mousedown', e => { isDown = true; startX = e.pageX - wrap.offsetLeft; scrollLeft = wrap.scrollLeft; wrap.style.cursor = 'grabbing'; });
-wrap.addEventListener('mouseleave', () => { isDown = false; wrap.style.cursor = 'grab'; });
-wrap.addEventListener('mouseup', () => { isDown = false; wrap.style.cursor = 'grab'; });
-wrap.addEventListener('mousemove', e => { if (!isDown) return; e.preventDefault(); const x = e.pageX - wrap.offsetLeft; wrap.scrollLeft = scrollLeft - (x - startX); });
-
-// 최신 기록으로 스크롤
-setTimeout(() => { wrap.scrollLeft = wrap.scrollWidth; }, 100);
-
-// 월별 차트
-const months = ['6월', '7월', '9월'];
-const paceVals = [6.55, 6.12, 6.70];
-const hrVals = [139, 151, 151];
-
-const baseOpts = {
-  responsive: true, maintainAspectRatio: false,
-  plugins: { legend: { display: false } },
-  scales: {
-    x: { ticks: { color: tick, font: { size: 12 } }, grid: { display: false }, border: { color: axis } },
-    y: { grid: { color: grid }, border: { display: false }, ticks: { color: tick, font: { size: 11 } } }
-  }
-};
-
-new Chart(document.getElementById('paceChart'), {
-  type: 'bar',
-  data: {
-    labels: months,
-    datasets: [{
-      data: paceVals,
-      backgroundColor: '#1D9E75',
-      borderRadius: { topLeft: 4, topRight: 4 },
-      borderSkipped: 'bottom',
-      maxBarThickness: 40,
-    }]
-  },
-  options: {
-    ...baseOpts,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: ctx => {
-            const v = ctx.raw, m = Math.floor(v), s = Math.round((v - m) * 60);
-            return m + "'" + (s < 10 ? '0' : '') + s + '"/km';
-          }
-        }
       },
-      annotation: {
-        annotations: {
-          goalLine: {
-            type: 'line', yMin: 6.0, yMax: 6.0,
-            borderColor: '#a32d2d', borderWidth: 1.5, borderDash: [4, 3],
-            label: {
-              display: true, content: "6'00\"", position: 'end',
-              color: '#a32d2d', font: { size: 11, weight: '500' },
-              backgroundColor: 'transparent', padding: { bottom: 4 }
-            }
-          }
-        }
-      }
-    },
-    scales: {
-      ...baseOpts.scales,
-      y: {
-        ...baseOpts.scales.y, min: 5.5,
-        ticks: {
-          color: tick, font: { size: 11 },
-          callback: v => { const m = Math.floor(v), s = Math.round((v - m) * 60); return m + "'" + (s < 10 ? '0' : '') + s + '"'; }
-        }
+      scales: {
+        x: { ticks: { color: tick, font: { size: 11 }, autoSkip: false, maxRotation: 45 }, grid: { display: false }, border: { color: axis } },
+        y: { min: 0, ticks: { color: tick, font: { size: 11 }, callback: v => v+'분' }, grid: { color: grid }, border: { display: false } }
       }
     }
-  }
-});
+  });
 
-new Chart(document.getElementById('hrChart'), {
-  type: 'bar',
-  data: {
-    labels: months,
-    datasets: [{
-      data: hrVals,
-      backgroundColor: '#eb6834',
-      borderRadius: { topLeft: 4, topRight: 4 },
-      borderSkipped: 'bottom',
-      maxBarThickness: 40,
-    }]
-  },
-  options: {
-    ...baseOpts,
-    plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: ctx => ctx.raw + ' BPM' } },
-      annotation: {
-        annotations: {
-          goalLine: {
-            type: 'line', yMin: 150, yMax: 150,
-            borderColor: '#a32d2d', borderWidth: 1.5, borderDash: [4, 3],
-            label: {
-              display: true, content: '150', position: 'end',
-              color: '#a32d2d', font: { size: 11, weight: '500' },
-              backgroundColor: 'transparent', padding: { bottom: 4 }
-            }
-          }
-        }
-      }
-    },
+  const wrap = document.getElementById('dailyWrap');
+  let isDown=false, startX, scrollLeft;
+  wrap.addEventListener('mousedown', e => { isDown=true; startX=e.pageX-wrap.offsetLeft; scrollLeft=wrap.scrollLeft; });
+  wrap.addEventListener('mouseleave', () => { isDown=false; });
+  wrap.addEventListener('mouseup', () => { isDown=false; });
+  wrap.addEventListener('mousemove', e => { if(!isDown)return; e.preventDefault(); wrap.scrollLeft=scrollLeft-(e.pageX-wrap.offsetLeft-startX); });
+  setTimeout(() => { wrap.scrollLeft = wrap.scrollWidth; }, 150);
+
+  const months = ['6월', '7월', '9월'];
+  const baseOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
     scales: {
-      ...baseOpts.scales,
-      y: { ...baseOpts.scales.y, min: 120, ticks: { color: tick, font: { size: 11 } } }
+      x: { ticks: { color: tick, font: { size: 12 } }, grid: { display: false }, border: { color: axis } },
+      y: { grid: { color: grid }, border: { display: false }, ticks: { color: tick, font: { size: 11 } } }
     }
-  }
-});
+  };
+
+  new Chart(document.getElementById('paceChart'), {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [{ data: [6.55,6.12,6.70], backgroundColor: '#1D9E75', borderRadius: { topLeft:4, topRight:4 }, borderSkipped:'bottom', maxBarThickness:40 }]
+    },
+    options: {
+      ...baseOpts,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => { const v=ctx.raw,m=Math.floor(v),s=Math.round((v-m)*60); return m+"'"+(s<10?'0':'')+s+'"/km'; } } },
+        annotation: { annotations: { goalLine: { type:'line', yMin:6.0, yMax:6.0, borderColor:'#a32d2d', borderWidth:1.5, borderDash:[4,3], label: { display:true, content:"6'00\"", position:'end', color:'#a32d2d', font:{size:11,weight:'500'}, backgroundColor:'transparent', padding:{bottom:4} } } } }
+      },
+      scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, min:5.5, ticks: { color:tick, font:{size:11}, callback: v => { const m=Math.floor(v),s=Math.round((v-m)*60); return m+"'"+(s<10?'0':'')+s+'"'; } } } }
+    }
+  });
+
+  new Chart(document.getElementById('hrChart'), {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [{ data: [139,151,151], backgroundColor: '#eb6834', borderRadius: { topLeft:4, topRight:4 }, borderSkipped:'bottom', maxBarThickness:40 }]
+    },
+    options: {
+      ...baseOpts,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw+' BPM' } },
+        annotation: { annotations: { goalLine: { type:'line', yMin:150, yMax:150, borderColor:'#a32d2d', borderWidth:1.5, borderDash:[4,3], label: { display:true, content:'150', position:'end', color:'#a32d2d', font:{size:11,weight:'500'}, backgroundColor:'transparent', padding:{bottom:4} } } } }
+      },
+      scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, min:120, ticks: { color:tick, font:{size:11} } } }
+    }
+  });
+}
+
+if (document.readyState === 'complete') { initCharts(); }
+else { window.addEventListener('load', initCharts); }
 </script>
 </body>
 </html>
