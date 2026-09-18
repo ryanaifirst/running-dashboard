@@ -8,7 +8,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #fafaf8; color: #0b0b0b; padding: 1.5rem;
+  background: #fafaf8; color: #0b0b0b; padding: 1rem 1.5rem;
 }
 @media (prefers-color-scheme: dark) {
   body { background: #1a1a19; color: #f0efec; }
@@ -31,7 +31,7 @@ body {
   font-size: 13px; font-weight: 500; color: #52514e; margin-bottom: 0.6rem;
 }
 .sub { color: #898781; font-weight: 400; }
-.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 1.25rem; }
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 1rem; }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; font-size: 12px; }
 .legend-text { color: #52514e; }
 .legend span { display: flex; align-items: center; gap: 5px; }
@@ -60,7 +60,7 @@ body {
     <span><span class="dot" style="background:#b4b2a9;"></span><span class="legend-text">5km 미만</span></span>
   </div>
   <div class="scroll-wrap" id="dailyWrap">
-    <div style="position:relative; height:220px;" id="dailyOuter">
+    <div style="position:relative; height:180px;" id="dailyOuter">
       <canvas id="dailyChart" role="img" aria-label="날짜별 5km 기록 막대그래프">5km 러닝 기록 추이</canvas>
     </div>
   </div>
@@ -70,13 +70,13 @@ body {
 <div class="chart-row">
   <div class="chart-card">
     <p class="chart-title">월별 평균 페이스 <span class="sub">(분/km)</span></p>
-    <div style="position:relative;width:100%;height:180px;">
+    <div style="position:relative;width:100%;height:150px;">
       <canvas id="paceChart" role="img" aria-label="월별 평균 페이스">6월 6'33&quot;, 7월 6'07&quot;, 9월 6'42&quot;</canvas>
     </div>
   </div>
   <div class="chart-card">
     <p class="chart-title">월별 평균 심박수 <span class="sub">(BPM)</span></p>
-    <div style="position:relative;width:100%;height:180px;">
+    <div style="position:relative;width:100%;height:150px;">
       <canvas id="hrChart" role="img" aria-label="월별 평균 심박수">6월 139, 7월 151, 9월 151</canvas>
     </div>
   </div>
@@ -125,9 +125,9 @@ outer.style.width = canvasW + 'px';
 
 const canvas = document.getElementById('dailyChart');
 canvas.width = canvasW;
-canvas.height = 220;
+canvas.height = 180;
 canvas.style.width = canvasW + 'px';
-canvas.style.height = '220px';
+canvas.style.height = '180px';
 
 const dailyChart = new Chart(canvas, {
   type: 'bar',
