@@ -60,6 +60,7 @@ body {
   <div class="legend">
     <span><span class="dot" style="background:#2a78d6;"></span><span class="legend-text">5km 런</span></span>
     <span><span class="dot" style="background:#b4b2a9;"></span><span class="legend-text">5km 미만</span></span>
+    <span><span class="dot" style="background:#7c5cbf;"></span><span class="legend-text">LSD</span></span>
   </div>
   <div class="scroll-wrap" id="dailyWrap">
     <div style="position:relative; height:180px;" id="dailyOuter">
@@ -109,6 +110,7 @@ const daily = [
   { d:'7/27', v:30.4, t:0 },
   { d:'9/14', v:34.9, t:0 },
   { d:'9/17', v:32.5, t:0 },
+  { d:'9/19', v:67.6, t:2 },
 ];
 
 function initCharts() {
@@ -133,7 +135,7 @@ function initCharts() {
       labels: daily.map(d => d.d),
       datasets: [{
         data: daily.map(d => d.v),
-        backgroundColor: daily.map(d => d.t === 0 ? '#2a78d6' : '#b4b2a9'),
+        backgroundColor: daily.map(d => d.t === 0 ? '#2a78d6' : d.t === 1 ? '#b4b2a9' : '#7c5cbf'),
         borderRadius: { topLeft: 4, topRight: 4 },
         borderSkipped: 'bottom',
         maxBarThickness: 28,
